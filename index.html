@@ -15,7 +15,7 @@
             width: 100vw;
             height: 100vh;
             overflow: hidden;
-            background: linear-gradient(180deg, #0a0e27 0%, #1a0a2e 100%);
+            background: linear-gradient(180deg, #000000 0%, #0a0a0a 50%, #050510 100%);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -25,7 +25,7 @@
         #gameCanvas {
             display: block;
             background: transparent;
-            box-shadow: 0 0 60px rgba(0, 255, 255, 0.3);
+            box-shadow: 0 0 80px rgba(255, 0, 100, 0.4), inset 0 0 40px rgba(0, 0, 0, 0.8);
             touch-action: none;
         }
 
@@ -43,9 +43,9 @@
             position: absolute;
             width: 120px;
             height: 120px;
-            border: 3px solid rgba(0, 255, 255, 0.5);
+            border: 3px solid rgba(255, 0, 100, 0.6);
             border-radius: 50%;
-            background: rgba(0, 255, 255, 0.1);
+            background: rgba(255, 0, 100, 0.15);
             left: 40px;
             bottom: 40px;
             pointer-events: auto;
@@ -56,8 +56,8 @@
             width: 50px;
             height: 50px;
             border-radius: 50%;
-            background: rgba(0, 255, 255, 0.6);
-            border: 2px solid #00ffff;
+            background: rgba(255, 0, 100, 0.7);
+            border: 2px solid #ff0064;
             left: 50%;
             top: 50%;
             transform: translate(-50%, -50%);
@@ -68,9 +68,9 @@
             position: absolute;
             width: 100px;
             height: 100px;
-            border: 3px solid rgba(0, 255, 102, 0.5);
+            border: 3px solid rgba(0, 200, 255, 0.6);
             border-radius: 50%;
-            background: rgba(0, 255, 102, 0.1);
+            background: rgba(0, 200, 255, 0.15);
             right: 40px;
             bottom: 60px;
             pointer-events: auto;
@@ -78,13 +78,13 @@
             align-items: center;
             justify-content: center;
             font-size: 20px;
-            color: #00ff66;
+            color: #00c8ff;
             font-weight: bold;
-            text-shadow: 0 0 10px #00ff66;
+            text-shadow: 0 0 10px #00c8ff;
         }
 
         .fire-button:active {
-            background: rgba(0, 255, 102, 0.3);
+            background: rgba(0, 200, 255, 0.3);
             transform: scale(0.95);
         }
 
@@ -394,45 +394,94 @@
             draw() {
                 ctx.save();
                 
-                // 绘制霓虹蓝三角箭头战机
                 const centerX = this.x + this.width / 2;
                 const centerY = this.y + this.height / 2;
 
-                // 发光效果
-                ctx.shadowColor = '#00ffff';
-                ctx.shadowBlur = 20;
+                // 金属质感发光
+                ctx.shadowColor = '#00c8ff';
+                ctx.shadowBlur = 25;
 
-                // 主体三角形
-                ctx.fillStyle = '#00ffff';
+                // 主体 - 金属灰蓝渐变
+                const bodyGrad = ctx.createLinearGradient(centerX, this.y, centerX, this.y + this.height);
+                bodyGrad.addColorStop(0, '#4a6a8a');
+                bodyGrad.addColorStop(0.5, '#2a3a4a');
+                bodyGrad.addColorStop(1, '#1a2a3a');
+                ctx.fillStyle = bodyGrad;
                 ctx.beginPath();
                 ctx.moveTo(centerX, this.y);
-                ctx.lineTo(this.x + 8, this.y + this.height);
-                ctx.lineTo(this.x + this.width - 8, this.y + this.height);
+                ctx.lineTo(this.x + 5, this.y + this.height - 8);
+                ctx.lineTo(this.x + this.width - 5, this.y + this.height - 8);
                 ctx.closePath();
                 ctx.fill();
 
-                // 内部装饰
-                ctx.fillStyle = '#0088ff';
+                // 金属边缘高光
+                ctx.strokeStyle = '#6a9aba';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                // 内部装甲板
+                const innerGrad = ctx.createLinearGradient(centerX, this.y + 12, centerX, this.y + this.height - 12);
+                innerGrad.addColorStop(0, '#1a3a5a');
+                innerGrad.addColorStop(1, '#0a1a2a');
+                ctx.fillStyle = innerGrad;
                 ctx.beginPath();
-                ctx.moveTo(centerX, this.y + 15);
-                ctx.lineTo(this.x + 15, this.y + this.height - 10);
-                ctx.lineTo(this.x + this.width - 15, this.y + this.height - 10);
+                ctx.moveTo(centerX, this.y + 12);
+                ctx.lineTo(this.x + 12, this.y + this.height - 12);
+                ctx.lineTo(this.x + this.width - 12, this.y + this.height - 12);
                 ctx.closePath();
                 ctx.fill();
 
-                // 机翼
-                ctx.fillStyle = '#00ccff';
+                // 驾驶舱 - 蓝色激光核心
+                ctx.shadowColor = '#00c8ff';
+                ctx.shadowBlur = 15;
+                ctx.fillStyle = '#00c8ff';
                 ctx.beginPath();
-                ctx.moveTo(this.x + 8, this.y + this.height - 5);
-                ctx.lineTo(this.x - 5, this.y + this.height + 5);
-                ctx.lineTo(this.x + 15, this.y + this.height - 15);
-                ctx.closePath();
+                ctx.arc(centerX, this.y + 22, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(centerX, this.y + 22, 2, 0, Math.PI * 2);
                 ctx.fill();
 
+                // 机翼 - 金属质感
+                ctx.shadowBlur = 10;
+                const wingGrad = ctx.createLinearGradient(this.x, centerY, this.x + this.width, centerY);
+                wingGrad.addColorStop(0, '#3a5a7a');
+                wingGrad.addColorStop(0.5, '#2a3a4a');
+                wingGrad.addColorStop(1, '#3a5a7a');
+                ctx.fillStyle = wingGrad;
+                // 左机翼
                 ctx.beginPath();
-                ctx.moveTo(this.x + this.width - 8, this.y + this.height - 5);
-                ctx.lineTo(this.x + this.width + 5, this.y + this.height + 5);
-                ctx.lineTo(this.x + this.width - 15, this.y + this.height - 15);
+                ctx.moveTo(this.x + 8, this.y + this.height - 10);
+                ctx.lineTo(this.x - 8, this.y + this.height + 3);
+                ctx.lineTo(this.x + 16, this.y + this.height - 18);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = '#5a8aaa';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                // 右机翼
+                ctx.beginPath();
+                ctx.moveTo(this.x + this.width - 8, this.y + this.height - 10);
+                ctx.lineTo(this.x + this.width + 8, this.y + this.height + 3);
+                ctx.lineTo(this.x + this.width - 16, this.y + this.height - 18);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // 引擎尾焰
+                ctx.shadowColor = '#ff4400';
+                ctx.shadowBlur = 12;
+                const flameH = 5 + Math.random() * 6;
+                const flameGrad = ctx.createLinearGradient(centerX, this.y + this.height - 8, centerX, this.y + this.height - 8 + flameH);
+                flameGrad.addColorStop(0, '#ff6600');
+                flameGrad.addColorStop(0.5, '#ff3300');
+                flameGrad.addColorStop(1, 'rgba(255,0,0,0)');
+                ctx.fillStyle = flameGrad;
+                ctx.beginPath();
+                ctx.moveTo(centerX - 6, this.y + this.height - 8);
+                ctx.lineTo(centerX, this.y + this.height - 8 + flameH);
+                ctx.lineTo(centerX + 6, this.y + this.height - 8);
                 ctx.closePath();
                 ctx.fill();
 
@@ -462,31 +511,55 @@
                 const centerX = this.x + this.width / 2;
                 const centerY = this.y + this.height / 2;
 
-                // 发光效果
+                // 暗黑科幻发光效果
                 ctx.shadowColor = this.color;
-                ctx.shadowBlur = 15;
+                ctx.shadowBlur = 18;
 
                 if (this.type === 1) {
-                    // 类型1：倒三角
-                    ctx.fillStyle = this.color;
+                    // 类型1：倒三角 - 金属质感
+                    const grad1 = ctx.createLinearGradient(centerX, this.y, centerX, this.y + this.height);
+                    grad1.addColorStop(0, '#2a1a1a');
+                    grad1.addColorStop(0.5, '#4a2a2a');
+                    grad1.addColorStop(1, '#3a1a1a');
+                    ctx.fillStyle = grad1;
                     ctx.beginPath();
                     ctx.moveTo(centerX, this.y + this.height);
                     ctx.lineTo(this.x + 5, this.y + 5);
                     ctx.lineTo(this.x + this.width - 5, this.y + 5);
                     ctx.closePath();
                     ctx.fill();
+                    
+                    // 金属边缘
+                    ctx.strokeStyle = this.color;
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
 
-                    // 内部装饰
-                    ctx.fillStyle = '#ff0044';
+                    // 内部装甲
+                    const innerGrad1 = ctx.createLinearGradient(centerX, this.y + 10, centerX, this.y + this.height - 10);
+                    innerGrad1.addColorStop(0, '#1a0a0a');
+                    innerGrad1.addColorStop(1, '#2a1515');
+                    ctx.fillStyle = innerGrad1;
                     ctx.beginPath();
                     ctx.moveTo(centerX, this.y + this.height - 10);
                     ctx.lineTo(this.x + 12, this.y + 12);
                     ctx.lineTo(this.x + this.width - 12, this.y + 12);
                     ctx.closePath();
                     ctx.fill();
+                    
+                    // 红色激光核心
+                    ctx.shadowColor = '#ff0044';
+                    ctx.shadowBlur = 12;
+                    ctx.fillStyle = '#ff0044';
+                    ctx.beginPath();
+                    ctx.arc(centerX, this.y + 18, 3, 0, Math.PI * 2);
+                    ctx.fill();
                 } else {
-                    // 类型2：菱形
-                    ctx.fillStyle = this.color;
+                    // 类型2：菱形 - 金属质感
+                    const grad2 = ctx.createLinearGradient(centerX, this.y, centerX, this.y + this.height);
+                    grad2.addColorStop(0, '#2a1a0a');
+                    grad2.addColorStop(0.5, '#4a3020');
+                    grad2.addColorStop(1, '#3a2010');
+                    ctx.fillStyle = grad2;
                     ctx.beginPath();
                     ctx.moveTo(centerX, this.y);
                     ctx.lineTo(this.x + this.width, centerY);
@@ -494,15 +567,31 @@
                     ctx.lineTo(this.x, centerY);
                     ctx.closePath();
                     ctx.fill();
+                    
+                    // 金属边缘
+                    ctx.strokeStyle = this.color;
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
 
-                    // 内部装饰
-                    ctx.fillStyle = '#cc4400';
+                    // 内部装甲
+                    const innerGrad2 = ctx.createLinearGradient(centerX, this.y + 10, centerX, this.y + this.height - 10);
+                    innerGrad2.addColorStop(0, '#1a0a05');
+                    innerGrad2.addColorStop(1, '#2a1510');
+                    ctx.fillStyle = innerGrad2;
                     ctx.beginPath();
                     ctx.moveTo(centerX, this.y + 10);
                     ctx.lineTo(this.x + this.width - 10, centerY);
                     ctx.lineTo(centerX, this.y + this.height - 10);
                     ctx.lineTo(this.x + 10, centerY);
                     ctx.closePath();
+                    ctx.fill();
+                    
+                    // 橙色激光核心
+                    ctx.shadowColor = '#ff6600';
+                    ctx.shadowBlur = 12;
+                    ctx.fillStyle = '#ff6600';
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, 3, 0, Math.PI * 2);
                     ctx.fill();
                 }
 
@@ -527,17 +616,36 @@
             draw() {
                 ctx.save();
                 
-                // 发光效果
-                ctx.shadowColor = '#00ff66';
-                ctx.shadowBlur = 12;
+                // 激光效果 - 多层发光
+                ctx.shadowColor = '#00ff88';
+                ctx.shadowBlur = 20;
 
-                // 子弹主体
-                ctx.fillStyle = '#00ff66';
+                // 外层光晕
+                const glowGrad = ctx.createLinearGradient(this.x, this.y, this.x, this.y + this.height);
+                glowGrad.addColorStop(0, 'rgba(0, 255, 136, 0.3)');
+                glowGrad.addColorStop(0.5, 'rgba(0, 255, 136, 0.8)');
+                glowGrad.addColorStop(1, 'rgba(0, 255, 136, 0.3)');
+                ctx.fillStyle = glowGrad;
+                ctx.fillRect(this.x - 2, this.y, this.width + 4, this.height);
+
+                // 子弹主体 - 激光绿
+                const bulletGrad = ctx.createLinearGradient(this.x, this.y, this.x, this.y + this.height);
+                bulletGrad.addColorStop(0, '#00ff88');
+                bulletGrad.addColorStop(0.5, '#00ffaa');
+                bulletGrad.addColorStop(1, '#00ff88');
+                ctx.fillStyle = bulletGrad;
                 ctx.fillRect(this.x, this.y, this.width, this.height);
 
-                // 子弹核心（更亮）
-                ctx.fillStyle = '#aaffaa';
+                // 子弹核心 - 白色高亮
+                ctx.fillStyle = '#ffffff';
                 ctx.fillRect(this.x + 1, this.y + 2, this.width - 2, this.height - 4);
+
+                // 顶部光点
+                ctx.shadowBlur = 15;
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(this.x + this.width / 2, this.y, 2, 0, Math.PI * 2);
+                ctx.fill();
 
                 ctx.restore();
             }
@@ -648,11 +756,17 @@
                 const centerX = this.x + this.width / 2;
                 const centerY = this.y + this.height / 2;
 
-                ctx.shadowColor = this.color;
-                ctx.shadowBlur = 25;
+                // 暗黑科幻Boss - 金属紫色质感
+                ctx.shadowColor = '#aa00ff';
+                ctx.shadowBlur = 30;
 
-                // 主体 - 大六边形
-                ctx.fillStyle = this.color;
+                // 主体 - 大六边形金属质感
+                const bossGrad = ctx.createLinearGradient(centerX, this.y, centerX, this.y + this.height);
+                bossGrad.addColorStop(0, '#2a1a3a');
+                bossGrad.addColorStop(0.3, '#4a2a5a');
+                bossGrad.addColorStop(0.7, '#3a1a4a');
+                bossGrad.addColorStop(1, '#1a0a2a');
+                ctx.fillStyle = bossGrad;
                 ctx.beginPath();
                 ctx.moveTo(centerX, this.y);
                 ctx.lineTo(this.x + this.width, this.y + this.height * 0.25);
@@ -662,9 +776,18 @@
                 ctx.lineTo(this.x, this.y + this.height * 0.25);
                 ctx.closePath();
                 ctx.fill();
+                
+                // 金属边缘高光
+                ctx.strokeStyle = '#aa00ff';
+                ctx.lineWidth = 3;
+                ctx.stroke();
 
-                // 内部装饰
-                ctx.fillStyle = '#cc00cc';
+                // 内部装甲板
+                const innerBossGrad = ctx.createLinearGradient(centerX, this.y + 15, centerX, this.y + this.height - 15);
+                innerBossGrad.addColorStop(0, '#0a0515');
+                innerBossGrad.addColorStop(0.5, '#1a0a25');
+                innerBossGrad.addColorStop(1, '#0a0515');
+                ctx.fillStyle = innerBossGrad;
                 ctx.beginPath();
                 ctx.moveTo(centerX, this.y + 15);
                 ctx.lineTo(this.x + this.width - 15, this.y + this.height * 0.3);
@@ -674,21 +797,50 @@
                 ctx.lineTo(this.x + 15, this.y + this.height * 0.3);
                 ctx.closePath();
                 ctx.fill();
+                
+                // 紫色激光核心
+                ctx.shadowColor = '#ff00ff';
+                ctx.shadowBlur = 20;
+                ctx.fillStyle = '#ff00ff';
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, 8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, 4, 0, Math.PI * 2);
+                ctx.fill();
 
-                // 血条
+                // 血条 - 暗黑风格
                 const barWidth = this.width;
                 const barHeight = 8;
                 const barX = this.x;
                 const barY = this.y - 15;
                 
-                ctx.fillStyle = '#333';
+                // 血条背景
+                const barBgGrad = ctx.createLinearGradient(barX, barY, barX, barY + barHeight);
+                barBgGrad.addColorStop(0, '#1a1a1a');
+                barBgGrad.addColorStop(1, '#0a0a0a');
+                ctx.fillStyle = barBgGrad;
                 ctx.fillRect(barX, barY, barWidth, barHeight);
                 
+                // 血量显示
                 const healthPercent = this.health / this.maxHealth;
-                ctx.fillStyle = healthPercent > 0.5 ? '#00ff00' : healthPercent > 0.25 ? '#ffff00' : '#ff0000';
+                const healthGrad = ctx.createLinearGradient(barX, barY, barX + barWidth * healthPercent, barY);
+                if (healthPercent > 0.5) {
+                    healthGrad.addColorStop(0, '#00ff00');
+                    healthGrad.addColorStop(1, '#00aa00');
+                } else if (healthPercent > 0.25) {
+                    healthGrad.addColorStop(0, '#ffff00');
+                    healthGrad.addColorStop(1, '#aaaa00');
+                } else {
+                    healthGrad.addColorStop(0, '#ff0000');
+                    healthGrad.addColorStop(1, '#aa0000');
+                }
+                ctx.fillStyle = healthGrad;
                 ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
                 
-                ctx.strokeStyle = '#fff';
+                // 血条边框
+                ctx.strokeStyle = '#666';
                 ctx.lineWidth = 1;
                 ctx.strokeRect(barX, barY, barWidth, barHeight);
 
