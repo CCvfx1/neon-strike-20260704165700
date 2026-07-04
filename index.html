@@ -114,7 +114,7 @@
             margin-bottom: 40px;
         }
 
-        #restartBtn {
+        #restartBtn, #backBtn {
             padding: 18px 50px;
             font-size: 24px;
             font-family: 'Courier New', monospace;
@@ -129,10 +129,22 @@
             box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
         }
 
-        #restartBtn:hover {
+        #restartBtn:hover, #backBtn:hover {
             background: rgba(0, 255, 255, 0.2);
             box-shadow: 0 0 40px rgba(0, 255, 255, 0.8);
             transform: scale(1.05);
+        }
+
+        #backBtn {
+            margin-left: 15px;
+            color: #ff6666;
+            border-color: #ff6666;
+            box-shadow: 0 0 20px rgba(255, 100, 100, 0.5);
+        }
+
+        #backBtn:hover {
+            background: rgba(255, 100, 100, 0.2);
+            box-shadow: 0 0 40px rgba(255, 100, 100, 0.8);
         }
 
         #leaderboard {
@@ -267,6 +279,7 @@
             <div id="leaderboardList"></div>
         </div>
         <button id="restartBtn">重新开始</button>
+        <button id="backBtn">返回</button>
     </div>
 
     <script>
@@ -1249,11 +1262,21 @@
             gameState.animationId = requestAnimationFrame(gameLoop);
         }
 
+        // 返回模式选择
+        function backToMenu() {
+            if (gameState.animationId) {
+                cancelAnimationFrame(gameState.animationId);
+            }
+            document.getElementById('gameOverScreen').style.display = 'none';
+            document.getElementById('modeSelectScreen').style.display = 'block';
+        }
+
         // 事件监听
         window.addEventListener('keydown', handleKeyDown);
         window.addEventListener('keyup', handleKeyUp);
         window.addEventListener('resize', handleResize);
         document.getElementById('restartBtn').addEventListener('click', restartGame);
+        document.getElementById('backBtn').addEventListener('click', backToMenu);
 
         // 触控控制
         const touchControls = document.getElementById('touchControls');
