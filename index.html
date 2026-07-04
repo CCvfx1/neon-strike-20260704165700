@@ -135,6 +135,50 @@
             transform: scale(1.05);
         }
 
+        #leaderboard {
+            margin-top: 30px;
+            text-align: left;
+            max-width: 350px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        #leaderboard h3 {
+            font-size: 20px;
+            color: #00ffff;
+            text-shadow: 0 0 10px #00ffff;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 15px;
+            margin: 5px 0;
+            background: rgba(0, 255, 255, 0.1);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 4px;
+            font-size: 16px;
+            color: #ffffff;
+        }
+
+        .leaderboard-item.current {
+            background: rgba(255, 255, 0, 0.2);
+            border: 2px solid #ffff00;
+            box-shadow: 0 0 15px rgba(255, 255, 0, 0.5);
+        }
+
+        .leaderboard-rank {
+            color: #00ffff;
+            font-weight: bold;
+        }
+
+        .leaderboard-score {
+            color: #ffff00;
+            font-weight: bold;
+        }
+
         #modeSelectScreen {
             position: absolute;
             top: 50%;
@@ -218,6 +262,10 @@
     <div id="gameOverScreen">
         <h1>游戏结束</h1>
         <div class="final-score">最终得分: <span id="finalScore">0</span></div>
+        <div id="leaderboard">
+            <h3>排行榜 - <span id="leaderboardMode">经典模式</span></h3>
+            <div id="leaderboardList"></div>
+        </div>
         <button id="restartBtn">重新开始</button>
     </div>
 
@@ -886,6 +934,112 @@
             gameState.isGameOver = true;
             document.getElementById('finalScore').textContent = gameState.score;
             document.getElementById('gameOverScreen').style.display = 'block';
+            
+            // 更新排行榜
+            updateLeaderboard();
+        }
+
+        // 排行榜功能
+        function getLeaderboardKey(mode) {
+            return `leaderboard_${mode}`;
+        }
+
+        function getLeaderboard(mode) {
+            const key = getLeaderboardKey(mode);
+            const data = localStorage.getItem(key);
+            return data ? JSON.parse(data) : [];
+        }
+
+        function saveLeaderboard(mode, leaderboard) {
+            const key = getLeaderboardKey(mode);
+            localStorage.setItem(key, JSON.stringify(leaderboard));
+        }
+
+        function updateLeaderboard() {
+            const mode = gameState.mode;
+            const score = gameState.score;
+            
+            // 获取当前排行榜
+            let leaderboard = getLeaderboard(mode);
+            
+            // 添加当前分数
+            const currentDate = new Date();
+            const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
+            leaderboard.push({
+                score: score,
+                date: dateStr,
+                isCurrent: true
+            });
+            
+            // 按分数降序排序
+            leaderboard.sort((a, b) => b.score - a.score);
+            
+            // 只保留前10名
+            leaderboard = leaderboard.slice(0, 10);
+            
+            // 找到当前分数的排名
+            let currentRank = -1;
+            leaderboard.forEach((item, index) => {
+                if (item.isCurrent) {
+                    currentRank = index + 1;
+                }
+            });
+            
+            // 保存排行榜
+            saveLeaderboard(mode, leaderboard);
+            
+            // 显示排行榜
+            displayLeaderboard(leaderboard, currentRank, mode);
+        }
+
+        function displayLeaderboard(leaderboard, currentRank, mode) {
+            // 设置模式名称
+            const modeNames = {
+                'classic': '经典模式',
+                'survival': '生存模式',
+                'boss': 'Boss模式'
+            };
+            document.getElementById('leaderboardMode').textContent = modeNames[mode];
+            
+            // 生成排行榜HTML
+            const listDiv = document.getElementById('leaderboardList');
+            listDiv.innerHTML = '';
+            
+            leaderboard.forEach((item, index) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'leaderboard-item';
+                if (item.isCurrent) {
+                    itemDiv.classList.add('current');
+                }
+                
+                const rankSpan = document.createElement('span');
+                rankSpan.className = 'leaderboard-rank';
+                rankSpan.textContent = `#${index + 1}`;
+                
+                const scoreSpan = document.createElement('span');
+                scoreSpan.className = 'leaderboard-score';
+                scoreSpan.textContent = item.score;
+                
+                const dateSpan = document.createElement('span');
+                dateSpan.textContent = item.date;
+                dateSpan.style.color = '#888';
+                dateSpan.style.fontSize = '14px';
+                
+                itemDiv.appendChild(rankSpan);
+                itemDiv.appendChild(dateSpan);
+                itemDiv.appendChild(scoreSpan);
+                listDiv.appendChild(itemDiv);
+            });
+            
+            // 如果没有进入前10
+            if (currentRank === -1) {
+                const noRankDiv = document.createElement('div');
+                noRankDiv.style.textAlign = 'center';
+                noRankDiv.style.color = '#888';
+                noRankDiv.style.marginTop = '10px';
+                noRankDiv.textContent = `本次得分: ${leaderboard[0] ? leaderboard[0].score : score} (未进入前10)`;
+                listDiv.appendChild(noRankDiv);
+            }
         }
 
         function gameLoop(timestamp) {
