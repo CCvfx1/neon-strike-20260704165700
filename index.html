@@ -135,6 +135,57 @@
             transform: scale(1.05);
         }
 
+        #modeSelectScreen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 10;
+        }
+
+        #modeSelectScreen h1 {
+            font-size: 48px;
+            color: #00ffff;
+            text-shadow: 0 0 20px #00ffff;
+            margin-bottom: 50px;
+            letter-spacing: 6px;
+        }
+
+        .mode-btn {
+            display: block;
+            width: 300px;
+            margin: 20px auto;
+            padding: 20px;
+            font-size: 20px;
+            font-family: 'Courier New', monospace;
+            color: #ffffff;
+            background: transparent;
+            border: 2px solid #00ffff;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: left;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+        }
+
+        .mode-btn:hover {
+            background: rgba(0, 255, 255, 0.15);
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.6);
+            transform: translateX(10px);
+        }
+
+        .mode-btn .mode-title {
+            font-size: 24px;
+            color: #00ffff;
+            margin-bottom: 8px;
+        }
+
+        .mode-btn .mode-desc {
+            font-size: 14px;
+            color: #aaaaaa;
+        }
+
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.7; }
@@ -143,6 +194,21 @@
 </head>
 <body>
     <canvas id="gameCanvas"></canvas>
+    <div id="modeSelectScreen">
+        <h1>选择模式</h1>
+        <button class="mode-btn" onclick="startGame('classic')">
+            <div class="mode-title">经典模式</div>
+            <div class="mode-desc">追求高分，一命通关</div>
+        </button>
+        <button class="mode-btn" onclick="startGame('survival')">
+            <div class="mode-title">生存模式</div>
+            <div class="mode-desc">3条生命，难度递增，看能坚持多久</div>
+        </button>
+        <button class="mode-btn" onclick="startGame('boss')">
+            <div class="mode-title">Boss模式</div>
+            <div class="mode-desc">每30秒出现大型Boss，击败得高分</div>
+        </button>
+    </div>
     <div id="touchControls">
         <div class="joystick" id="joystick">
             <div class="joystick-stick" id="joystickStick"></div>
@@ -174,7 +240,12 @@
             PARTICLE_LIFE: 1.0,
             PARTICLE_DECAY: 0.025,
             SCORE_PER_KILL: 10,
-            STAR_COUNT: 120
+            STAR_COUNT: 120,
+            BOSS_SPAWN_INTERVAL: 30000, // 30秒
+            BOSS_HEALTH: 50,
+            BOSS_WIDTH: 100,
+            BOSS_HEIGHT: 80,
+            BOSS_SCORE: 200
         };
 
         // Canvas 设置
@@ -187,14 +258,20 @@
             score: 0,
             isGameOver: false,
             isStarted: false,
+            mode: 'classic', // 'classic', 'survival', 'boss'
+            lives: 1,
+            maxLives: 3,
+            difficulty: 1,
             player: null,
             enemies: [],
             bullets: [],
             particles: [],
             stars: [],
+            boss: null,
             keys: new Set(),
             lastFireTime: 0,
             lastEnemySpawnTime: 0,
+            lastBossSpawnTime: 0,
             startTime: 0,
             animationId: null
         };
@@ -461,10 +538,20 @@
             gameState.bullets = [];
             gameState.particles = [];
             gameState.stars = [];
+            gameState.boss = null;
             gameState.keys = new Set();
             gameState.lastFireTime = 0;
             gameState.lastEnemySpawnTime = 0;
+            gameState.lastBossSpawnTime = 0;
             gameState.startTime = 0;
+
+            // 根据模式设置生命数
+            if (gameState.mode === 'survival') {
+                gameState.lives = 3;
+                gameState.difficulty = 1;
+            } else {
+                gameState.lives = 1;
+            }
 
             for (let i = 0; i < CONFIG.STAR_COUNT; i++) {
                 gameState.stars.push(new Star());
@@ -473,11 +560,116 @@
             document.getElementById('gameOverScreen').style.display = 'none';
         }
 
+        // 开始游戏
+        function startGame(mode) {
+            gameState.mode = mode;
+            document.getElementById('modeSelectScreen').style.display = 'none';
+            initGame();
+            gameState.animationId = requestAnimationFrame(gameLoop);
+        }
+
+        // Boss 类
+        class Boss {
+            constructor() {
+                this.width = CONFIG.BOSS_WIDTH;
+                this.height = CONFIG.BOSS_HEIGHT;
+                this.x = canvasWidth / 2 - this.width / 2;
+                this.y = -this.height;
+                this.speed = 1;
+                this.health = CONFIG.BOSS_HEALTH;
+                this.maxHealth = CONFIG.BOSS_HEALTH;
+                this.color = '#ff00ff';
+                this.direction = 1;
+                this.moveSpeed = 2;
+            }
+
+            update() {
+                if (this.y < 50) {
+                    this.y += this.speed;
+                } else {
+                    this.x += this.moveSpeed * this.direction;
+                    if (this.x <= 0 || this.x + this.width >= canvasWidth) {
+                        this.direction *= -1;
+                    }
+                }
+            }
+
+            draw() {
+                ctx.save();
+                
+                const centerX = this.x + this.width / 2;
+                const centerY = this.y + this.height / 2;
+
+                ctx.shadowColor = this.color;
+                ctx.shadowBlur = 25;
+
+                // 主体 - 大六边形
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.moveTo(centerX, this.y);
+                ctx.lineTo(this.x + this.width, this.y + this.height * 0.25);
+                ctx.lineTo(this.x + this.width, this.y + this.height * 0.75);
+                ctx.lineTo(centerX, this.y + this.height);
+                ctx.lineTo(this.x, this.y + this.height * 0.75);
+                ctx.lineTo(this.x, this.y + this.height * 0.25);
+                ctx.closePath();
+                ctx.fill();
+
+                // 内部装饰
+                ctx.fillStyle = '#cc00cc';
+                ctx.beginPath();
+                ctx.moveTo(centerX, this.y + 15);
+                ctx.lineTo(this.x + this.width - 15, this.y + this.height * 0.3);
+                ctx.lineTo(this.x + this.width - 15, this.y + this.height * 0.7);
+                ctx.lineTo(centerX, this.y + this.height - 15);
+                ctx.lineTo(this.x + 15, this.y + this.height * 0.7);
+                ctx.lineTo(this.x + 15, this.y + this.height * 0.3);
+                ctx.closePath();
+                ctx.fill();
+
+                // 血条
+                const barWidth = this.width;
+                const barHeight = 8;
+                const barX = this.x;
+                const barY = this.y - 15;
+                
+                ctx.fillStyle = '#333';
+                ctx.fillRect(barX, barY, barWidth, barHeight);
+                
+                const healthPercent = this.health / this.maxHealth;
+                ctx.fillStyle = healthPercent > 0.5 ? '#00ff00' : healthPercent > 0.25 ? '#ffff00' : '#ff0000';
+                ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
+                
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+                ctx.restore();
+            }
+        }
+
         // 生成敌机
-        function spawnEnemy(timestamp) {
-            if (timestamp - gameState.lastEnemySpawnTime > CONFIG.ENEMY_SPAWN_INTERVAL) {
+        function spawnEnemy(gameTime) {
+            let interval = CONFIG.ENEMY_SPAWN_INTERVAL;
+            
+            // 生存模式难度递增
+            if (gameState.mode === 'survival') {
+                interval = Math.max(300, CONFIG.ENEMY_SPAWN_INTERVAL - gameState.difficulty * 50);
+            }
+            
+            if (gameTime - gameState.lastEnemySpawnTime > interval) {
                 gameState.enemies.push(new Enemy());
-                gameState.lastEnemySpawnTime = timestamp;
+                gameState.lastEnemySpawnTime = gameTime;
+            }
+        }
+
+        // 生成 Boss
+        function spawnBoss(gameTime) {
+            if (gameState.mode === 'boss' && !gameState.boss) {
+                if (gameTime - gameState.lastBossSpawnTime > CONFIG.BOSS_SPAWN_INTERVAL) {
+                    gameState.boss = new Boss();
+                    gameState.lastBossSpawnTime = gameTime;
+                }
             }
         }
 
@@ -521,6 +713,19 @@
             fireBullet(gameTime);
 
             spawnEnemy(gameTime);
+            
+            // Boss 模式生成
+            if (gameState.mode === 'boss') {
+                spawnBoss(gameTime);
+                if (gameState.boss) {
+                    gameState.boss.update();
+                }
+            }
+            
+            // 生存模式难度递增
+            if (gameState.mode === 'survival') {
+                gameState.difficulty = 1 + Math.floor(gameTime / 10000); // 每10秒增加难度
+            }
 
             gameState.bullets.forEach(bullet => bullet.update());
             gameState.bullets = gameState.bullets.filter(bullet => bullet.y + bullet.height > 0);
@@ -533,6 +738,7 @@
 
             gameState.stars.forEach(star => star.update());
 
+            // 子弹与敌机碰撞
             for (let i = gameState.bullets.length - 1; i >= 0; i--) {
                 const bullet = gameState.bullets[i];
                 for (let j = gameState.enemies.length - 1; j >= 0; j--) {
@@ -546,12 +752,55 @@
                     }
                 }
             }
+            
+            // 子弹与 Boss 碰撞
+            if (gameState.boss) {
+                for (let i = gameState.bullets.length - 1; i >= 0; i--) {
+                    const bullet = gameState.bullets[i];
+                    if (checkCollision(bullet, gameState.boss)) {
+                        gameState.boss.health--;
+                        gameState.bullets.splice(i, 1);
+                        createExplosion(bullet.x, bullet.y, '#ffff00');
+                        
+                        if (gameState.boss.health <= 0) {
+                            createExplosion(gameState.boss.x + gameState.boss.width / 2, gameState.boss.y + gameState.boss.height / 2, '#ff00ff');
+                            createExplosion(gameState.boss.x + gameState.boss.width / 3, gameState.boss.y + gameState.boss.height / 3, '#ff00ff');
+                            createExplosion(gameState.boss.x + gameState.boss.width * 2 / 3, gameState.boss.y + gameState.boss.height * 2 / 3, '#ff00ff');
+                            gameState.score += CONFIG.BOSS_SCORE;
+                            gameState.boss = null;
+                        }
+                        break;
+                    }
+                }
+            }
 
+            // 敌机与玩家碰撞
             for (const enemy of gameState.enemies) {
                 if (checkCollision(gameState.player, enemy)) {
-                    gameOver();
+                    handlePlayerHit();
                     break;
                 }
+            }
+            
+            // Boss 与玩家碰撞
+            if (gameState.boss && checkCollision(gameState.player, gameState.boss)) {
+                handlePlayerHit();
+            }
+        }
+        
+        function handlePlayerHit() {
+            gameState.lives--;
+            if (gameState.lives <= 0) {
+                gameOver();
+            } else {
+                // 清除附近敌机，给玩家喘息机会
+                gameState.enemies = gameState.enemies.filter(enemy => {
+                    const dist = Math.hypot(enemy.x - gameState.player.x, enemy.y - gameState.player.y);
+                    return dist > 150;
+                });
+                // 重置玩家位置
+                gameState.player.x = canvasWidth / 2 - gameState.player.width / 2;
+                gameState.player.y = canvasHeight - gameState.player.height - 50;
             }
         }
 
@@ -573,13 +822,47 @@
                 gameState.enemies.forEach(enemy => enemy.draw());
                 gameState.player.draw();
                 gameState.particles.forEach(particle => particle.draw());
+                
+                // 绘制 Boss
+                if (gameState.boss) {
+                    gameState.boss.draw();
+                }
 
+                // 显示得分
                 ctx.save();
                 ctx.font = 'bold 28px Courier New';
                 ctx.fillStyle = '#ffffff';
                 ctx.shadowColor = '#00ffff';
                 ctx.shadowBlur = 10;
                 ctx.fillText('得分: ' + gameState.score, 20, 40);
+                ctx.restore();
+                
+                // 显示生命数（生存模式）
+                if (gameState.mode === 'survival') {
+                    ctx.save();
+                    ctx.font = 'bold 24px Courier New';
+                    ctx.fillStyle = '#ff6666';
+                    ctx.shadowColor = '#ff0000';
+                    ctx.shadowBlur = 10;
+                    let livesText = '生命: ';
+                    for (let i = 0; i < gameState.lives; i++) {
+                        livesText += '❤ ';
+                    }
+                    ctx.fillText(livesText, 20, 75);
+                    ctx.restore();
+                }
+                
+                // 显示模式名称
+                ctx.save();
+                ctx.font = '16px Courier New';
+                ctx.fillStyle = '#aaaaaa';
+                ctx.shadowColor = '#00ffff';
+                ctx.shadowBlur = 5;
+                let modeName = '';
+                if (gameState.mode === 'classic') modeName = '经典模式';
+                else if (gameState.mode === 'survival') modeName = '生存模式';
+                else if (gameState.mode === 'boss') modeName = 'Boss模式';
+                ctx.fillText(modeName, 20, 105);
                 ctx.restore();
 
                 if (gameTime < 4000) {
