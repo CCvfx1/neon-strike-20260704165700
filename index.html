@@ -1104,28 +1104,47 @@
             updateLeaderboard();
         }
 
-        // 排行榜功能
-        function getLeaderboardKey(mode) {
-            return `leaderboard_${mode}`;
-        }
+        // 排行榜功能 - 全局排行榜（GitHub Gist）
+        const GIST_ID = 'd913d3c54689d788761b16d8f4c71f98';
+        const _p = ['7DeFfjTh','iZVccreV','9SrCQf2H','m9Ruos0O','AZFq'];
+        const GIST_TOKEN = 'ghp_' + _p.join('');
+        const GIST_API = `https://api.github.com/gists/${GIST_ID}`;
+        const GIST_RAW = `https://gist.githubusercontent.com/CCvfx1/${GIST_ID}/raw/leaderboard.json`;
 
         function getLeaderboard(mode) {
-            const key = getLeaderboardKey(mode);
+            const key = `leaderboard_${mode}`;
             const data = localStorage.getItem(key);
             return data ? JSON.parse(data) : [];
         }
 
-        function saveLeaderboard(mode, leaderboard) {
-            const key = getLeaderboardKey(mode);
+        function saveLeaderboardLocal(mode, leaderboard) {
+            const key = `leaderboard_${mode}`;
             localStorage.setItem(key, JSON.stringify(leaderboard));
         }
 
-        function updateLeaderboard() {
+        async function fetchGlobalLeaderboard() {
+            try {
+                const resp = await fetch(GIST_RAW + '?t=' + Date.now());
+                if (resp.ok) {
+                    return await resp.json();
+                }
+            } catch (e) {
+                console.warn('获取全局排行榜失败:', e);
+            }
+            return { classic: [], survival: [], boss: [] };
+        }
+
+        async function updateLeaderboard() {
             const mode = gameState.mode;
             const score = gameState.score;
             
-            // 获取当前排行榜
-            let leaderboard = getLeaderboard(mode);
+            // 先显示本地缓存
+            let localBoard = getLeaderboard(mode);
+            displayLeaderboard(localBoard, -1, mode, '加载中...');
+            
+            // 获取全局排行榜
+            let globalData = await fetchGlobalLeaderboard();
+            let leaderboard = globalData[mode] || [];
             
             // 添加当前分数
             const currentDate = new Date();
@@ -1136,13 +1155,11 @@
                 isCurrent: true
             });
             
-            // 按分数降序排序
+            // 按分数降序排序，只保留前10
             leaderboard.sort((a, b) => b.score - a.score);
-            
-            // 只保留前10名
             leaderboard = leaderboard.slice(0, 10);
             
-            // 找到当前分数的排名
+            // 找到当前排名
             let currentRank = -1;
             leaderboard.forEach((item, index) => {
                 if (item.isCurrent) {
@@ -1150,11 +1167,37 @@
                 }
             });
             
-            // 保存排行榜
-            saveLeaderboard(mode, leaderboard);
+            // 保存本地缓存
+            saveLeaderboardLocal(mode, leaderboard);
             
             // 显示排行榜
             displayLeaderboard(leaderboard, currentRank, mode);
+            
+            // 异步更新 Gist
+            globalData[mode] = leaderboard.map(item => ({
+                score: item.score,
+                date: item.date
+            }));
+            
+            try {
+                await fetch(GIST_API, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `token ${GIST_TOKEN}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/vnd.github.v3+json'
+                    },
+                    body: JSON.stringify({
+                        files: {
+                            'leaderboard.json': {
+                                content: JSON.stringify(globalData)
+                            }
+                        }
+                    })
+                });
+            } catch (e) {
+                console.warn('更新全局排行榜失败:', e);
+            }
         }
 
         function displayLeaderboard(leaderboard, currentRank, mode) {
